@@ -71,6 +71,7 @@ subprocess.run(
     cwd=plugin_folder_path,
     check=True,
     env={
+        **os.environ,
         "PLUGIN_FILE_PATH": plugin_file_path,
     }
 )
