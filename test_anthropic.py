@@ -9,11 +9,17 @@ dotenv.load_dotenv()
 
 test_plugin_package_path = Path("test-anthropic-package.difypkg")
 plugin_source_folder_path = Path("anthropic")
-test_plugin_folder_path = Path("test-anthropic-package")
 
 try:
     subprocess.run(
-        args=["dify", "plugin", "package", "anthropic", "--output_path", "test-anthropic-package.difypkg"],
+        args=[
+            "dify",
+            "plugin",
+            "package",
+            "anthropic",
+            "--output_path",
+            test_plugin_package_path.as_posix()
+        ],
         check=True,
     )
 
@@ -22,9 +28,8 @@ try:
         check=True,
         env={
             **os.environ,
-            "PLUGIN_FILE_PATH": "test-anthropic-package.difypkg"
+            "PLUGIN_FILE_PATH": test_plugin_package_path.as_posix(),
         }
     )
 finally:
     test_plugin_package_path.unlink()
-    shutil.rmtree(test_plugin_folder_path)
