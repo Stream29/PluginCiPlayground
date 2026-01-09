@@ -24,7 +24,7 @@ def test_llm_call() -> None:
         user_id="test_user",
         provider="anthropic",
         model_type=ModelType.LLM,
-        model="claude-4-5-haiku",
+        model="claude-haiku-4-5-20251001",
         credentials={"anthropic_api_key": api_key},
         prompt_messages=[{"role": "user", "content": "Say hello in one word."}],
         model_parameters={"max_tokens": 100},

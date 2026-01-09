@@ -35,7 +35,7 @@ def init_venv() -> None:
     pyproject_path: Final[Path] = plugin_folder_path / "pyproject.toml"
     if pyproject_path.exists():
         subprocess.run(
-            args=["uv", "sync", "--all-groups"],
+            args=["uv", "sync", "--all-groups", "--python", "3.12"],
             cwd=plugin_folder_path,
             check=True,
         )
@@ -44,7 +44,7 @@ def init_venv() -> None:
     requirement_path: Final[Path] = plugin_folder_path / "requirements.txt"
     if requirement_path.exists():
         subprocess.run(
-            args=["uv", "venv"],
+            args=["uv", "venv", "--python", "3.12"],
             cwd=plugin_folder_path,
             check=True,
         )
@@ -61,17 +61,11 @@ def init_venv() -> None:
 init_venv()
 
 subprocess.run(
-    args=["uv", "pip", "install", "pytest"],
-    cwd=plugin_folder_path,
-    check=True,
-)
-
-subprocess.run(
-    args=["uv", "run", "pytest"],
+    args=["uv", "run", "--with", "pytest", "pytest"],
     cwd=plugin_folder_path,
     check=True,
     env={
         **os.environ,
-        "PLUGIN_FILE_PATH": plugin_file_path,
+        "PLUGIN_FILE_PATH": str(Path(plugin_file_path).resolve()),
     }
 )
