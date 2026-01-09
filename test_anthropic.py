@@ -3,6 +3,10 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import dotenv
+
+dotenv.load_dotenv()
+
 test_plugin_package_path = Path("test-anthropic-package.difypkg")
 plugin_source_folder_path = Path("anthropic")
 test_plugin_folder_path = Path("test-anthropic-package")
