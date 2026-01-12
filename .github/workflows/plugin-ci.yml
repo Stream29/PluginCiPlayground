@@ -89,7 +89,7 @@ jobs:
       fail-fast: false
     
     # Use the plugin ID (folder name) for environment mapping
-    environment: ${{ matrix.plugin.id }}
+    environment: ${{ matrix.plugin.path }}
     
     steps:
       - uses: actions/checkout@v4
