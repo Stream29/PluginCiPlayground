@@ -112,7 +112,7 @@ jobs:
           /home/linuxbrew/.linuxbrew/bin/brew install dify
 
       - name: Export All Secrets to Environment
-        uses: oNaiPs/secrets-to-env@v1
+        uses: oNaiPs/secrets-to-env-action@v1
         with:
           secrets: ${{ toJSON(secrets) }}
 
