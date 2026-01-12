@@ -4,11 +4,18 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'models/**'
+      - '**/manifest.yaml'
+      - '**/provider/**'
+      - '**/models/**'
+      - '**/tests/**'
   pull_request:
     branches: [ main ]
     paths:
-      - 'models/**'
+      - '**/manifest.yaml'
+      - '**/provider/**'
+      - '**/models/**'
+      - '**/tests/**'
+
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
@@ -27,7 +34,6 @@ jobs:
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             BASE_SHA="${{ github.event.pull_request.base.sha }}"
           else
-            # For push, compare with previous commit, or handle first push
             if [ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]; then
               BASE_SHA="HEAD~1"
             else
@@ -35,41 +41,28 @@ jobs:
             fi
           fi
           
-          echo "Comparing against $BASE_SHA"
           CHANGED_FILES=$(git diff --name-only $BASE_SHA HEAD)
-          echo "Changed files: $CHANGED_FILES"
           
-          # Find directories containing manifest.yaml that have changes
-          # The plugin is identified by its folder name (e.g., 'anthropic' from 'models/anthropic/manifest.yaml')
-          # But we need the full path to package it.
-          
-          # Find all manifest.yaml files in the repo
+          # Find all manifest.yaml files
           MANIFESTS=$(find . -name "manifest.yaml" -not -path "*/.*")
           
-          VALID_PLUGINS_JSON="[]"
-          
+          VALID_PLUGINS=()
           for m in $MANIFESTS; do
-            # Get the directory of the manifest (e.g., ./models/anthropic)
-            PLUGIN_DIR=$(dirname "$m" | sed 's|^\./||')
-            
-            # Check if any changed files are within this plugin directory
-            if echo "$CHANGED_FILES" | grep -q "^$PLUGIN_DIR/"; then
-              # Get the folder name as the ID (e.g., 'anthropic')
-              PLUGIN_ID=$(basename "$PLUGIN_DIR")
-              
-              # Add to list with path and ID
-              VALID_PLUGINS_JSON=$(echo "$VALID_PLUGINS_JSON" | jq -c ". + [{\"id\": \"$PLUGIN_ID\", \"path\": \"$PLUGIN_DIR\"}]")
+            PLUGIN_PATH=$(dirname "$m" | sed 's|^\./||')
+            # If any changed file starts with this plugin path
+            if echo "$CHANGED_FILES" | grep -q "^$PLUGIN_PATH/"; then
+              VALID_PLUGINS+=("$PLUGIN_PATH")
             fi
           done
           
-          COUNT=$(echo "$VALID_PLUGINS_JSON" | jq 'length')
-          if [ "$COUNT" -eq 0 ]; then
+          if [ ${#VALID_PLUGINS[@]} -eq 0 ]; then
             echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "plugins=[]" >> $GITHUB_OUTPUT
           else
+            JSON=$(printf '%s\n' "${VALID_PLUGINS[@]}" | jq -R . | jq -s -c .)
             echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "plugins=$VALID_PLUGINS_JSON" >> $GITHUB_OUTPUT
-            echo "Detected plugins: $VALID_PLUGINS_JSON"
+            echo "plugins=$JSON" >> $GITHUB_OUTPUT
+            echo "Detected plugins: $JSON"
           fi
 
   test:
@@ -78,11 +71,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        plugin: ${{ fromJson(needs.detect-changes.outputs.plugins) }}
+        plugin_path: ${{ fromJson(needs.detect-changes.outputs.plugins) }}
       fail-fast: false
     
-    # Use the plugin ID (folder name) for environment mapping
-    environment: ${{ matrix.plugin.path }}
+    # Using the full plugin path as the environment name
+    environment: ${{ matrix.plugin_path }}
     
     steps:
       - uses: actions/checkout@v4
@@ -94,13 +87,12 @@ jobs:
 
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
       - name: Install Homebrew and Dify CLI
         run: |
-          # Homebrew installation on Linux Runner
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           echo "/home/linuxbrew/.linuxbrew/bin" >> $GITHUB_PATH
           echo "/home/linuxbrew/.linuxbrew/sbin" >> $GITHUB_PATH
-          # Install Dify CLI via brew
           /home/linuxbrew/.linuxbrew/bin/brew tap langgenius/dify
           /home/linuxbrew/.linuxbrew/bin/brew install dify
 
@@ -109,13 +101,15 @@ jobs:
         with:
           secrets: ${{ toJSON(secrets) }}
 
-      - name: Run Test for ${{ matrix.plugin.path }}
+      - name: Run Plugin E2E Test
         run: |
-          PKG_NAME="test-${{ matrix.plugin.id }}-package.difypkg"
+          # Use a sanitized name for the package file
+          SAFE_NAME=$(echo "${{ matrix.plugin_path }}" | tr '/' '-')
+          PKG_NAME="test-${SAFE_NAME}-package.difypkg"
           
-          echo "### Packaging plugin: ${{ matrix.plugin.path }} ###"
-          dify plugin package ${{ matrix.plugin.path }} --output_path "$PKG_NAME"
+          echo "### Packaging plugin at: ${{ matrix.plugin_path }} ###"
+          dify plugin package ${{ matrix.plugin_path }} --output_path "$PKG_NAME"
           
-          echo "### Running test script for ${{ matrix.plugin.id }} ###"
+          echo "### Running test script for ${{ matrix.plugin_path }} ###"
           export PLUGIN_FILE_PATH="$PKG_NAME"
           python script.py
