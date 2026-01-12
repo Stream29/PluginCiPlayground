@@ -100,7 +100,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | i
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
       - name: Install Homebrew and Dify CLI
         run: |
           # Homebrew installation on Linux Runner
