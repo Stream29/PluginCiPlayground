@@ -4,18 +4,11 @@ on:
   push:
     branches: [ main ]
     paths:
-      - '**/manifest.yaml'
-      - '**/provider/**'
-      - '**/models/**'
-      - '**/tests/**'
+      - 'models/**'
   pull_request:
     branches: [ main ]
     paths:
-      - '**/manifest.yaml'
-      - '**/provider/**'
-      - '**/models/**'
-      - '**/tests/**'
-
+      - 'models/**'
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
@@ -116,10 +109,8 @@ jobs:
         with:
           secrets: ${{ toJSON(secrets) }}
 
-      - name: Run Plugin E2E Test
+      - name: Run Test for ${{ matrix.plugin.path }}
         run: |
-          # matrix.plugin.id is 'anthropic'
-          # matrix.plugin.path is 'models/anthropic'
           PKG_NAME="test-${{ matrix.plugin.id }}-package.difypkg"
           
           echo "### Packaging plugin: ${{ matrix.plugin.path }} ###"
