@@ -103,13 +103,36 @@ jobs:
 
       - name: Run Plugin E2E Test
         run: |
-          # Use a sanitized name for the package file
+          set -e
+          
           SAFE_NAME=$(echo "${{ matrix.plugin_path }}" | tr '/' '-')
           PKG_NAME="test-${SAFE_NAME}-package.difypkg"
+          EXTRACT_DIR="test-${SAFE_NAME}-unpacked"
           
           echo "### Packaging plugin at: ${{ matrix.plugin_path }} ###"
           dify plugin package ${{ matrix.plugin_path }} --output_path "$PKG_NAME"
           
-          echo "### Running test script for ${{ matrix.plugin_path }} ###"
-          export PLUGIN_FILE_PATH="$PKG_NAME"
-          python script.py
+          echo "### Extracting package ###"
+          unzip -q "$PKG_NAME" -d "$EXTRACT_DIR"
+          cd "$EXTRACT_DIR"
+          
+          if [ ! -d "tests" ]; then
+            echo "Error: No tests directory found in plugin"
+            exit 1
+          fi
+          
+          echo "### Installing dependencies ###"
+          if [ -f "pyproject.toml" ]; then
+            uv sync --all-groups --python 3.12
+          elif [ -f "requirements.txt" ]; then
+            uv venv --python 3.12
+            uv pip install -r requirements.txt
+          else
+            echo "Error: No pyproject.toml or requirements.txt found"
+            exit 1
+          fi
+          
+          echo "### Running tests ###"
+          PLUGIN_FILE_PATH="$(realpath ../$PKG_NAME)" uv run --with pytest pytest
+          
+          echo "### Tests passed ###"
